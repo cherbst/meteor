@@ -421,7 +421,8 @@ _.extend(File.prototype, {
 // - packageMap and isopackCache: for resolving package dependencies
 // - arch: the architecture to build
 // - cordovaPluginsFile: projectContextModule.CordovaPluginsFile object
-// - includeDebug: whether to include packages marked debugOnly in this target
+// - buildMode: 'development' or 'production'; determines whether debugOnly
+//   and prodOnly packages are included; defaults to 'production'
 //
 // see subclasses for additional options
 var Target = function (options) {
@@ -468,12 +469,7 @@ var Target = function (options) {
   // A mapping from Cordova plugin name to Cordova plugin version number.
   self.cordovaDependencies = self.cordovaPluginsFile ? {} : null;
 
-  // For the todos sample app:
-  // false: 99.6 KB / 316 KB
-  // vs
-  // true: 99 KB / 315 KB
-
-  self.includeDebug = options.includeDebug;
+  self.buildMode = options.buildMode || 'production';
 
   self.bundlerCacheDir = options.bundlerCacheDir;
 };
@@ -574,7 +570,10 @@ _.extend(Target.prototype, {
         if (typeof p === "string") {
           p = isopackCache.getIsopack(p);
         }
-        if (p.debugOnly && ! self.includeDebug) {
+        if (p.debugOnly && self.buildMode !== 'development') {
+          return;
+        }
+        if (p.prodOnly && self.buildMode !== 'production') {
           return;
         }
         var unibuild = p.getUnibuildAtArch(self.arch);
@@ -607,7 +606,8 @@ _.extend(Target.prototype, {
           dependencies: unibuild.uses,
           arch: self.arch,
           isopackCache: isopackCache,
-          skipDebugOnly: ! self.includeDebug
+          skipDebugOnly: self.buildMode !== 'development',
+          skipProdOnly: self.buildMode !== 'production'
         }, addToGetsUsed);
       };
       _.each(rootUnibuilds, addToGetsUsed);
@@ -669,7 +669,8 @@ _.extend(Target.prototype, {
           isopackCache: isopackCache,
           skipUnordered: true,
           acceptableWeakPackages: self.usedPackages,
-          skipDebugOnly: ! self.includeDebug
+          skipDebugOnly: self.buildMode !== 'development',
+          skipProdOnly: self.buildMode !== 'production',
         }, processUnibuild);
         self.unibuilds.push(unibuild);
         delete needed[unibuild.id];
@@ -1962,7 +1963,8 @@ Find out more about Meteor at meteor.com.
  *     ('development'/'production', defaults to 'development')
  *   - serverArch: the server architecture to target (string, default
  *     archinfo.host())
- *   - includeDebug: include packages marked debugOnly (boolean, default false)
+ *   - buildMode: string, 'development'/'production', governs inclusion of
+ *     debugOnly and prodOnly packages, default 'production'
  *   - webArchs: array of 'web.*' options to build (defaults to
  *     projectContext.platformList.getWebArchs())
  *   - warnings: a MessageSet of linting messages or null if linting
@@ -2008,6 +2010,7 @@ exports.bundle = function ({
   var webArchs = buildOptions.webArchs ||
         projectContext.platformList.getWebArchs();
   const minifyMode = buildOptions.minifyMode || 'development';
+  const buildMode = buildOptions.buildMode || 'production';
 
   var releaseName =
     release.current.isCheckout() ? "none" : release.current.name;
@@ -2029,6 +2032,10 @@ exports.bundle = function ({
   if (! release.usingRightReleaseForApp(projectContext))
     throw new Error("running wrong release for app?");
 
+  if (! _.contains(['development', 'production'], buildMode)) {
+    throw new Error('Unrecognized build mode: ' + buildMode);
+  }
+
   var messages = buildmessage.capture({
     title: "building the application"
   }, function () {
@@ -2041,7 +2048,7 @@ exports.bundle = function ({
         arch: webArch,
         cordovaPluginsFile: (webArch === 'web.cordova'
                              ? projectContext.cordovaPluginsFile : null),
-        includeDebug: buildOptions.includeDebug,
+        buildMode: buildOptions.buildMode
       });
 
       client.make({
@@ -2062,7 +2069,7 @@ exports.bundle = function ({
         isopackCache: projectContext.isopackCache,
         arch: serverArch,
         releaseName: releaseName,
-        includeDebug: buildOptions.includeDebug
+        buildMode: buildOptions.buildMode
       };
       if (clientTargets)
         targetOptions.clientTargets = clientTargets;

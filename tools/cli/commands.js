@@ -401,7 +401,7 @@ function doRunCommand (options) {
     settingsFile: options.settings,
     buildOptions: {
       minifyMode: options.production ? 'production' : 'development',
-      includeDebug: ! options.production
+      buildMode: options.production ? 'production' : 'development'
     },
     rootUrl: process.env.ROOT_URL,
     mongoUrl: process.env.MONGO_URL,
@@ -903,7 +903,7 @@ var buildCommand = function (options) {
       //     is then 'meteor bundle' with no args fails if you have any local
       //     packages with binary npm dependencies
       serverArch: bundleArch,
-      includeDebug: !! options.debug
+      buildMode: options.debug ? 'development' : 'production'
     }
   });
   if (bundleResult.errors) {
@@ -1242,7 +1242,7 @@ main.registerCommand({
 
   var buildOptions = {
     minifyMode: options.debug ? 'development' : 'production',
-    includeDebug: options.debug,
+    buildMode: options.debug ? 'development' : 'production',
     serverArch: buildArch
   };
 
@@ -1646,7 +1646,7 @@ var getTestPackageNames = function (projectContext, packageNames) {
 var runTestAppForPackages = function (projectContext, options) {
   var buildOptions = {
     minifyMode: options.production ? 'production' : 'development',
-    includeDebug: ! options.production
+    buildMode: options.production ? 'production' : 'development',
   };
 
   if (options.deploy) {

@@ -751,6 +751,7 @@ exports.publishPackage = function (options) {
         compilerVersion: compiler.BUILT_BY,
         containsPlugins: packageSource.containsPlugins(),
         debugOnly: packageSource.debugOnly,
+        prodOnly: packageSource.prodOnly,
         exports: packageSource.getExports(),
         releaseName: release.current.name,
         dependencies: packageDeps
